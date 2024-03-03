@@ -5,93 +5,36 @@ Limitations -
 The longest jump is two parsecs (~6.5 light years)
 """
 
-import json
-import math
 import csv
 import glob
+import json
+import math
 import operator
+import random
+from operator import itemgetter
+
+from star import Star
 
 
-class Star:
-    str_keys = "id", "hip", "hd", "hr", "gl", "bf", "proper"
-    name_preference = "proper", "bf", "gl", "hip", "hd", "hr"
-
-    def __init__(self, **kwargs):
-        self.id = None
-        self.hip = None
-        self.hd = None
-        self.hr = None
-        self.gl = None
-        self.bf = None
-        self.proper = None
-        self.ra = None
-        self.dec = None
-        self.dist = None
-        self.pmra = None
-        self.pmdec = None
-        self.rv = None
-        self.mag = None
-        self.absmag = None
-        self.spect = None
-        self.ci = None
-        self.x = None
-        self.y = None
-        self.z = None
-        self.vx = None
-        self.vy = None
-        self.vz = None
-        self.rarad = None
-        self.decrad = None
-        self.pmrarad = None
-        self.pmdecrad = None
-        self.bayer = None
-        self.flam = None
-        self.con = None
-        self.comp = None
-        self.comp_primary = None
-        self.base = None
-        self.lum = None
-        self.var = None
-        self.var_min = None
-        self.var_max = None
-        for key, value in kwargs.items():
-            assert key in self.__dict__, f"Attribute '{key}' not found in class variables"
-            if key not in self.str_keys:
-                try:
-                    value = float(value)
-                except ValueError:
-                    pass
-
-            setattr(self, key, value)
-
-        self.nearby_stars = []
-
-    @property
-    def name(self):
-        """
-        Not all have proper names, and some databases are empty
-
-        Returns:
-            common name or Hipparcos or Henry Draper or Havard Revised or Gliese or Baye/ Flamsteed
-        """
-        for field in self.name_preference:
-            value = getattr(self, field)
-            if value:
-                return " ".join(value.split())
-
-
-class StarPaths:
+class NearbyStars:
     """
-    Use the HYG database to map paths to nearby stars, based on arbitrary science fiction limitations
+    Use the HYG database to populate nearby star systems and for navigation based on arbitrary limitations
     """
 
-    def __init__(self, jump_parsecs: float = 1.83961, parsec_limit: float = 20) -> None:
+    jump_parsecs = 2
+    parsec_limit = 4
+
+    def __init__(self, jump_parsecs: float = None, parsec_limit: float = None) -> None:
         """
         initialize the database
         """
         self.stars: list[Star] = []
-        self.jump_parsecs = jump_parsecs
-        self.parsec_limit = parsec_limit
+        if jump_parsecs is not None:
+            self.jump_parsecs = jump_parsecs
+
+        if parsec_limit is not None:
+            self.parsec_limit = parsec_limit
+
         self.load_hyg()
 
     def load_hyg(self) -> None:
@@ -107,14 +50,19 @@ class StarPaths:
         with open(filename, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if float(row["dist"]) <= self.parsec_limit and (
-                    not row["gl"] or row["gl"][-1].isdigit() or row["gl"][-1] == "A"
-                ):
+                if float(row["dist"]) <= self.parsec_limit:
+                    # and (
+                    # not row["gl"] or row["gl"][-1].isdigit() or row["gl"][-1] == "A"
+                    # ):
                     self.stars.append(Star(**row))
 
         self.stars = sorted(self.stars, key=operator.attrgetter("dist"))
         self.set_nearby_stars()
         print("Star data loaded and pre-processed")
+        print(f"{len(self.stars)} stars within {self.parsec_limit} parsecs of Sol.")
+        # Save as new json
+        with open(f"stars-within-{self.parsec_limit}-parsecs.json", "w", encoding="utf-8") as f:
+            json.dump(sorted([s.to_json() for s in self.stars], key=itemgetter("dist")), f, indent=2)
 
     def set_nearby_stars(self):
         """
@@ -158,7 +106,7 @@ class StarPaths:
 
         return math.sqrt(d_a**2 + d_b**2 - 2 * d_a * d_b * cos_c)
 
-    def nearby_stars(self, origin: Star) -> list[Star]:
+    def nearby_stars(self, origin: Star) -> list[tuple[float, Star]]:
         """
         Get the stars with <parsecs> parsecs from the star with the proper name, <star>
 
@@ -168,24 +116,22 @@ class StarPaths:
         nearby_stars = []
         if origin.proper == "Sol":
             # distance from Sol is a field in the database
-            for target in self.stars:
-                if target.proper == "Sol":
+            for star in self.stars:
+                if star.proper == "Sol":
                     continue
 
-                if target.dist <= self.jump_parsecs:
-                    # print(f'{target.dist: .2f} parsecs from {self.name(origin)} to {self.name(target)}')
-                    nearby_stars.append(target)
+                if star.dist <= self.jump_parsecs:
+                    nearby_stars.append((star.dist, star))
 
             return nearby_stars
 
-        for target in self.stars:
-            if origin.name == target.name:
+        for star in self.stars:
+            if origin.name == star.name:
                 continue
 
-            distance = self.distance(origin, target)
+            distance = self.distance(origin, star)
             if distance <= self.jump_parsecs:
-                # print(f"{distance: .2f} parsecs from {origin.name} to {target.name}")
-                nearby_stars.append(target)
+                nearby_stars.append((distance, star))
 
         return nearby_stars
 
@@ -201,18 +147,13 @@ class StarPaths:
 
         """
         current_star = path[-1]
-        # print(current_star.name)
         nearby_stars = self.nearby_stars(current_star)
 
-        if not nearby_stars or len(path) > 10:
+        if not nearby_stars:
             all_paths.append(path)
             return
 
-        if len(all_paths) > 1:
-            return
-
-        for nearby_star in nearby_stars:
-            # if nearby_star.name not in [_.name for _ in path]:
+        for distance, nearby_star in nearby_stars:
             nearby_name = nearby_star.name
             if nearby_name not in visited_stars:
                 visited_stars.add(nearby_name)
@@ -249,7 +190,7 @@ class StarPaths:
         target = next(s for s in self.stars if s.name == target_name)
         path = self.explore_path(origin, target)
         if path:
-            print(", ".join([s.name for s in path]))
+            print(json.dumps([s.name for s in path], indent=2))
 
     def explore_path(self, origin: Star, target: Star, visited=None):
         """
@@ -283,5 +224,6 @@ if __name__ == "__main__":
     # with open("star_systems.json", "w", encoding="utf-8") as f:
     #     json.dump(sorted([_.name for _ in star_paths.stars]), f, indent=2)
 
-    _path = star_paths.star_path("Sol", "Del Pav")
-    # for _s in _path:
+    for p in range(10):
+        target_name = random.choice([s.name for s in star_paths.stars if s.name != "Sol"])
+        star_paths.star_path("Sol", target_name)

@@ -1,0 +1,4 @@
+pip-chill>=1.0.3,<2
+randomname==0.2.1
+black>=24.2.0,<25
+isort>=5.13.2,<6
