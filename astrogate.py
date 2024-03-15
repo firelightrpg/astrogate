@@ -3,6 +3,36 @@ Generate a series of networks of jump paths to nearby stars.
 
 Limitations -
 The longest jump is two parsecs (~6.5 light years)
+
+1G orbital distance by size
+Dwarf Planets (e.g., Ceres):
+    A few kilometers to tens of kilometers above the surface, let's say approximately 1-50 kilometers.
+
+Sub-Earth Planets (e.g., Mars):
+    Similar to dwarf planets, perhaps ranging from a few kilometers to tens of kilometers, approximately 1-50
+    kilometers.
+
+Earth-like Planets (e.g., Earth):
+    Since Earth already has 1G at its surface, we're looking at the altitude above the surface. This could range from a
+    few hundred kilometers to a few thousand kilometers, roughly 200-2,000 kilometers.
+
+Super-Earths:
+    Given their increased mass compared to Earth-like planets, we might estimate the distance required to be slightly
+    greater than Earth-like planets, perhaps in the range of 500-5,000 kilometers.
+
+Mini-Neptunes and Neptunian Planets:
+    Due to their lower densities and larger sizes compared to terrestrial planets, achieving 1G in orbit around these
+    planets would require significantly greater distances. This could range from thousands to tens of thousands of
+    kilometers, roughly 5,000-50,000 kilometers.
+
+Giant Planets (e.g., Jupiter):
+    These massive planets would require considerable distances for achieving 1G in orbit. We might estimate this to be
+    in the range of tens of thousands to hundreds of thousands of kilometers, approximately 20,000-200,000 kilometers.
+
+Super-Jupiters:
+    Given their even larger size and mass compared to Jupiter, the distance required for 1G in orbit around them would
+    likely be similar to or greater than Jupiter. We could estimate this to be in the range of 50,000-500,000
+    kilometers.
 """
 
 import csv
